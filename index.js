@@ -1,10 +1,29 @@
 const balanced = require('balanced-match');
+const {
+  ArrayPrototypeJoin,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  ArrayPrototypePushApply,
+  ArrayPrototypeShift,
+  ArrayPrototypeSome,
+  RegExpPrototypeTest,
+  MathAbs,
+  MathMax,
+  MathRandom,
+  RegExpPrototypeSymbolMatch,
+  String,
+  StringFromCharCode,
+  StringPrototypeCharCodeAt,
+  StringPrototypeIndexOf,
+  StringPrototypeSplit,
+  StringPrototypeSlice,
+} = require('node-primordials')
 
-const escSlash = '\0SLASH'+Math.random()+'\0';
-const escOpen = '\0OPEN'+Math.random()+'\0';
-const escClose = '\0CLOSE'+Math.random()+'\0';
-const escComma = '\0COMMA'+Math.random()+'\0';
-const escPeriod = '\0PERIOD'+Math.random()+'\0';
+const escSlash = '\0SLASH'+MathRandom()+'\0';
+const escOpen = '\0OPEN'+MathRandom()+'\0';
+const escClose = '\0CLOSE'+MathRandom()+'\0';
+const escComma = '\0COMMA'+MathRandom()+'\0';
+const escPeriod = '\0PERIOD'+MathRandom()+'\0';
 
 /**
  * @return {number}
@@ -12,29 +31,37 @@ const escPeriod = '\0PERIOD'+Math.random()+'\0';
 function numeric(str) {
   return parseInt(str, 10) == str
     ? parseInt(str, 10)
-    : str.charCodeAt(0);
+    : StringPrototypeCharCodeAt(str, 0);
 }
 
 /**
  * @param {string} str
  */
 function escapeBraces(str) {
-  return str.split('\\\\').join(escSlash)
-            .split('\\{').join(escOpen)
-            .split('\\}').join(escClose)
-            .split('\\,').join(escComma)
-            .split('\\.').join(escPeriod);
+  return ArrayPrototypeJoin(StringPrototypeSplit(
+    ArrayPrototypeJoin(StringPrototypeSplit(
+        ArrayPrototypeJoin(StringPrototypeSplit(
+          ArrayPrototypeJoin(StringPrototypeSplit(
+            ArrayPrototypeJoin(StringPrototypeSplit(str, '\\\\'), escSlash),
+          '\\{'), escOpen),
+        '\\}'), escClose),
+      '\\,'), escComma),
+    '\\.'), escPeriod);
 }
 
 /**
  * @param {string} str
  */
 function unescapeBraces(str) {
-  return str.split(escSlash).join('\\')
-            .split(escOpen).join('{')
-            .split(escClose).join('}')
-            .split(escComma).join(',')
-            .split(escPeriod).join('.');
+  return ArrayPrototypeJoin(StringPrototypeSplit(
+    ArrayPrototypeJoin(StringPrototypeSplit(
+        ArrayPrototypeJoin(StringPrototypeSplit(
+          ArrayPrototypeJoin(StringPrototypeSplit(
+            ArrayPrototypeJoin(StringPrototypeSplit(str, escSlash), '\\'),
+          escOpen), '{'),
+        escClose), '}'),
+      escComma), ','),
+    escPeriod), '.');
 }
 
 /**
@@ -51,19 +78,19 @@ function parseCommaParts(str) {
   const m = balanced('{', '}', str);
 
   if (!m)
-    return str.split(',');
+    return StringPrototypeSplit(str, ',');
 
   const {pre, body, post} = m;
-  const p = pre.split(',');
+  const p = StringPrototypeSplit(pre, ',');
 
   p[p.length-1] += '{' + body + '}';
   const postParts = parseCommaParts(post);
   if (post.length) {
-    p[p.length-1] += postParts.shift();
-    p.push.apply(p, postParts);
+    p[p.length-1] += ArrayPrototypeShift(postParts);
+    ArrayPrototypePushApply(p, postParts);
   }
 
-  parts.push.apply(parts, p);
+  ArrayPrototypePushApply(parts, p);
 
   return parts;
 }
@@ -81,11 +108,11 @@ function expandTop(str) {
   // but a{},b}c will be expanded to [a}c,abc].
   // One could argue that this is a bug in Bash, but since the goal of
   // this module is to match Bash's rules, we escape a leading {}
-  if (str.slice(0, 2) === '{}') {
-    str = '\\{\\}' + str.slice(2);
+  if (StringPrototypeSlice(str, 0, 2) === '{}') {
+    str = '\\{\\}' + StringPrototypeSlice(str, 2);
   }
 
-  return expand(escapeBraces(str), true).map(unescapeBraces);
+  return ArrayPrototypeMap(expand(escapeBraces(str), true), unescapeBraces);
 }
 
 /**
@@ -99,7 +126,7 @@ function embrace(str) {
  * @param {string} el
  */
 function isPadded(el) {
-  return /^-?0\d/.test(el);
+  return RegExpPrototypeTest(/^-?0\d/, el);
 }
 
 /**
@@ -135,19 +162,19 @@ function expand(str, isTop) {
     ? expand(m.post, false)
     : [''];
 
-  if (/\$$/.test(m.pre)) {
+  if (RegExpPrototypeTest(/\$$/, m.pre)) {
     for (let k = 0; k < post.length; k++) {
       const expansion = pre+ '{' + m.body + '}' + post[k];
-      expansions.push(expansion);
+      ArrayPrototypePush(expansions, expansion);
     }
   } else {
-    const isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-    const isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+    const isNumericSequence =  RegExpPrototypeTest(/^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/, m.body);
+    const isAlphaSequence =  RegExpPrototypeTest(/^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/, m.body);
     const isSequence = isNumericSequence || isAlphaSequence;
-    const isOptions = m.body.indexOf(',') >= 0;
+    const isOptions = StringPrototypeIndexOf(m.body, ',') >= 0;
     if (!isSequence && !isOptions) {
       // {a},b}
-      if (m.post.match(/,.*\}/)) {
+      if (RegExpPrototypeSymbolMatch(/,.*\}/, m.post)) {
         str = m.pre + '{' + m.body + escClose + m.post;
         return expand(str);
       }
@@ -156,14 +183,14 @@ function expand(str, isTop) {
 
     let n;
     if (isSequence) {
-      n = m.body.split(/\.\./);
+      n = StringPrototypeSplit(m.body, /\.\./);
     } else {
       n = parseCommaParts(m.body);
       if (n.length === 1) {
         // x{{a,b}}y ==> x{a}y x{b}y
-        n = expand(n[0], false).map(embrace);
+        n = ArrayPrototypeMap(expand(n[0], false), embrace);
         if (n.length === 1) {
-          return post.map(function(p) {
+          return ArrayPrototypeMap(post, function(p) {
             return m.pre + n[0] + p;
           });
         }
@@ -177,9 +204,9 @@ function expand(str, isTop) {
     if (isSequence) {
       const x = numeric(n[0]);
       const y = numeric(n[1]);
-      const width = Math.max(n[0].length, n[1].length)
+      const width = MathMax(n[0].length, n[1].length)
       let incr = n.length == 3
-        ? Math.abs(numeric(n[2]))
+        ? MathAbs(numeric(n[2]))
         : 1;
       let test = lte;
       const reverse = y < x;
@@ -187,14 +214,14 @@ function expand(str, isTop) {
         incr *= -1;
         test = gte;
       }
-      const pad = n.some(isPadded);
+      const pad = ArrayPrototypeSome(n, isPadded);
 
       N = [];
 
       for (let i = x; test(i, y); i += incr) {
         let c;
         if (isAlphaSequence) {
-          c = String.fromCharCode(i);
+          c = StringFromCharCode(i);
           if (c === '\\')
             c = '';
         } else {
@@ -202,21 +229,21 @@ function expand(str, isTop) {
           if (pad) {
             const need = width - c.length;
             if (need > 0) {
-              const z = new Array(need + 1).join('0');
+              const z = ArrayPrototypeJoin(new Array(need + 1), '0');
               if (i < 0)
-                c = '-' + z + c.slice(1);
+                c = '-' + z + StringPrototypeSlice(c, 1);
               else
                 c = z + c;
             }
           }
         }
-        N.push(c);
+        ArrayPrototypePush(N, c);
       }
     } else {
       N = [];
 
       for (let j = 0; j < n.length; j++) {
-        N.push.apply(N, expand(n[j], false));
+        ArrayPrototypePushApply(N, expand(n[j], false));
       }
     }
 
@@ -224,7 +251,7 @@ function expand(str, isTop) {
       for (let k = 0; k < post.length; k++) {
         const expansion = pre + N[j] + post[k];
         if (!isTop || isSequence || expansion)
-          expansions.push(expansion);
+          ArrayPrototypePush(expansions, expansion);
       }
     }
   }

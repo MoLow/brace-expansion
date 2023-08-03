@@ -14,7 +14,8 @@
     "bench": "matcha bench/bench.js"
   },
   "dependencies": {
-    "balanced-match": "^1.0.0"
+    "balanced-match": "github:MoLow/balanced-match#use-primordials",
+    "node-primordials": "github:MoLow/node-primordials#tmp-build"
   },
   "devDependencies": {
     "@c4312/matcha": "^1.3.1",
